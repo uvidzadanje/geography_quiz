@@ -1,0 +1,30 @@
+{
+  "name": "geography_quiz",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "webpack",
+    "watch": "webpack --watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/uvidzadanje/geography_quiz.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/uvidzadanje/geography_quiz/issues"
+  },
+  "homepage": "https://github.com/uvidzadanje/geography_quiz#readme",
+  "devDependencies": {
+    "ts-loader": "^9.3.1",
+    "typescript": "^4.7.4",
+    "webpack": "^5.73.0",
+    "webpack-cli": "^4.10.0"
+  },
+  "dependencies": {
+    "json-server": "^0.17.0",
+    "rxjs": "^7.5.5"
+  }
+}
