@@ -1,4 +1,4 @@
-import { countryInput } from "../controller/observable";
+import { countryInput, timerObservable } from "../controller/observable";
 import { Country } from "../model/country";
 
 export function fillCountry(svgImage: SVGElement, country: Country, usernameInput: HTMLInputElement)
@@ -24,6 +24,10 @@ export function drawHomePage(body: HTMLDivElement)
 
     const usernameInput: HTMLInputElement = drawUsernameInput();
     const button: HTMLButtonElement = drawStartButton();
+
+    const timer: HTMLParagraphElement = drawTimer();
+
+    appendToDiv(body, [timer]);
 
     appendToDiv(inputContainer, [usernameInput, button]);
 
@@ -60,4 +64,28 @@ export function appendToDiv(div: HTMLDivElement, elements: HTMLElement[])
     elements.forEach(element => {
         div.appendChild(element);
     })
+}
+
+export function prependToDiv(div: HTMLDivElement, elements: HTMLElement[])
+{
+    elements.forEach(element => {
+        div.prepend(element);
+    })
+}
+
+export function drawTimer()
+{
+    const timer: HTMLParagraphElement = document.createElement("p");
+    timer.style.fontSize = "30px";
+    timer.style.fontWeight = "bold";
+
+    const timerObs = timerObservable();
+    timerObs.subscribe(seconds => setTimer(seconds, timer));
+
+    return timer;
+}
+
+export function setTimer(seconds: number, timer: HTMLParagraphElement)
+{
+    timer.innerText = `${Math.floor(seconds/60) < 10 ? `0${Math.floor(seconds/60)}`: Math.floor(seconds/60)}:${seconds%60 < 10 ? `0${seconds%60}` : seconds%60}`;
 }

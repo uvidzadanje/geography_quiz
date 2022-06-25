@@ -1,12 +1,14 @@
 import { config } from "../config";
+import { Country } from "../model/country";
 
 export async function getCountry(country: String)
 {
-    const response = await fetch(`${config.API_URL}/players?name=${country}`);
-    
-    const countries = await response.json();
-    
-    if(countries.length !== 1) return null;
+    try {
+        const response = await fetch(`${config.API_URL}/countries?name=${country}`);
 
-    return countries;
+        return response.json();
+    } catch (error) {
+        console.log(error);
+        return null;
+    }
 }
