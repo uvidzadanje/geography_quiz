@@ -24,6 +24,7 @@ export class Game
 
     addAffectedCountry(country: Country)
     {
+        if(!country) return;
         this._affectedCountries.push(country);
     }
 }

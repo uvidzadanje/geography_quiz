@@ -1,5 +1,4 @@
 import { debounceTime, fromEvent, map, filter, switchMap, from, Observable, timer, take } from 'rxjs'
-import { config } from '../config';
 import { Country } from '../model/country';
 import { getCountry } from '../service/country';
 
@@ -7,10 +6,10 @@ type milisecond = number;
 type second = number;
 
 export function countryInput(
-    usernameInput: HTMLInputElement
+    countryInput: HTMLInputElement
 )
 {
-    return fromEvent(usernameInput, "input").pipe(
+    return fromEvent(countryInput, "input").pipe(
         debounceTime(100),
         map((ev: InputEvent) => (<HTMLInputElement>ev.target).value),
         filter((countryName) => countryName.length >= 4),
@@ -21,16 +20,16 @@ export function countryInput(
 
 export function selectCountry(countryName: string): Observable<Country[]>
 {
-    return from(getCountry(countryName));
+    return from(getCountry(countryName.toLowerCase()));
 }
 
 export function timerObservable(): Observable<number>
 {
-    const TIMER_IN_SECONDS: second = 300;
+    const TIMER_IN_SECONDS: second = 20;
     const ONE_SECOND: milisecond = 1000;
 
-    return timer(ONE_SECOND, ONE_SECOND).pipe(
-        map((secondsPassed: number)  => TIMER_IN_SECONDS - secondsPassed),
+    return timer(0, ONE_SECOND).pipe(
+        map((secondsPassed: second)  => TIMER_IN_SECONDS - secondsPassed),
         take(TIMER_IN_SECONDS+1)
     )
 }

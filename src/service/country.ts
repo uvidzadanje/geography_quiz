@@ -1,10 +1,11 @@
 import { config } from "../config";
-import { Country } from "../model/country";
+
+const baseUrl = `${config.API_URL}/countries`
 
 export async function getCountry(country: String)
 {
     try {
-        const response = await fetch(`${config.API_URL}/countries?name=${country}`);
+        const response = await fetch(`${baseUrl}?name=${country}`);
 
         return response.json();
     } catch (error) {
