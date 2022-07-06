@@ -280,8 +280,13 @@
   "players": [
     {
       "username": "david",
-      "highScore": 5,
+      "highScore": 41,
       "id": 1
+    },
+    {
+      "username": "nesto",
+      "highScore": 0,
+      "id": 2
     }
   ]
 }

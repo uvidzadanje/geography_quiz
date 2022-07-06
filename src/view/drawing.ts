@@ -1,8 +1,10 @@
-import { fromEvent, merge, switchMap, from, Subscription } from "rxjs";
-import { countryInput, timerObservable } from "../controller/observable";
+import { from, Subscription, of, BehaviorSubject } from "rxjs";
+import { allCountriesObservable, buttonClickObservable, countryInput, mergeGameOver, timerObservable, timerTickObservable } from "../controller/observable";
 import { Country } from "../model/country";
 import { Game } from "../model/game";
-import { getTop10Scores, updatePlayer } from "../service/user";
+import { getTop10Scores } from "../service/user";
+
+const NUM_OF_COUNTRIES = 41;
 
 export function fillCountry(svgImage: SVGElement, country: Country, usernameInput: HTMLInputElement)
 {
@@ -28,7 +30,8 @@ export function drawHomePage(body: HTMLDivElement)
     const usernameInput: HTMLInputElement = drawUsernameInput();
     const button: HTMLButtonElement = drawStartButton();
 
-    fromEvent(button, "click").subscribe(() => runStart(body, usernameInput.value));
+    buttonClickObservable(button)
+    .subscribe(() => runStart(body, usernameInput.value));
 
     appendToDiv(inputContainer, [usernameInput, button]);
 
@@ -101,23 +104,39 @@ export function runStart(body: HTMLDivElement, username: string)
 
     const timer: HTMLParagraphElement = drawTimer();
 
-    const buttonObs = fromEvent(button, "click");
-    const timerTick = fromEvent(document, "timerTick");
-
+    const buttonClick$ = buttonClickObservable(button);
+    const timerTick$ = timerTickObservable();
+    const allCountries$ = allCountriesObservable();
     
-    const timerObs = timerObservable();
-    const timerSubscription = timerObs.subscribe(seconds => setTimer(seconds, timer));
-    
-    const inputObs = countryInput(input);
+    const timer$ = timerObservable();
+    const timerSubscription = timer$.subscribe(seconds => setTimer(seconds, timer));
+    const input$ = countryInput(input, game);
 
-    inputObs.subscribe((country: Country) => {
+    input$.subscribe((country: Country) => {
         fillCountry(getSVGMap() ,country, input);
         game.addAffectedCountry(country);
+        numberOfAffectedCountries.next(game.affectedCountries.length);
     });
 
-    merge(buttonObs, timerTick).pipe(
-        switchMap(() => from(updatePlayer(game.player.username, game.affectedCountries.length)))
-    ).subscribe(() => showScore(body, game.affectedCountries.length, timerSubscription))
+    let numberOfAffectedCountries: BehaviorSubject<number> = new BehaviorSubject(game.affectedCountries.length);
+    numberOfAffectedCountries.pipe().subscribe((numberOfAffectedCountries) => {
+        if(numberOfAffectedCountries !== NUM_OF_COUNTRIES) return;
+
+        document.dispatchEvent(new Event("allCountries"));
+    })
+
+    mergeGameOver(
+        [
+            buttonClick$, 
+            timerTick$, 
+            allCountries$,         
+        ], 
+        {
+            username: game.player.username, 
+            score: game.affectedCountries.length
+        }
+    )
+    .subscribe(() => showScore(body, game.affectedCountries.length, timerSubscription))
 
     appendToDiv(divContainer, [timer, input, button]);
     appendToDiv(body, [divContainer]);

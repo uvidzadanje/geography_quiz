@@ -16,9 +16,10 @@ export async function getPlayer(username: string)
     }
 }
 
-export async function updatePlayer(username: string, score: number)
+export async function updatePlayer(updateData: {username: string, score: number})
 {
     try {
+        let {username, score} = updateData;
         let player = await getPlayer(username) || await createPlayer(username);
 
         if(player.highScore > score) return false;
@@ -30,7 +31,6 @@ export async function updatePlayer(username: string, score: number)
             },
             body: JSON.stringify({username, highScore: score})
         });
-        console.log(player);
 
         return true;
     } catch (error) {
@@ -49,7 +49,6 @@ export async function createPlayer(username: string)
             },
             body: JSON.stringify({username, highScore: 0})
         });
-        console.log(player);
 
         return await player.json();
     } catch (error) {
