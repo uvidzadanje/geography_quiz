@@ -1,5 +1,14 @@
-import { from, Subscription, of, BehaviorSubject } from "rxjs";
-import { allCountriesObservable, buttonClickObservable, countryInput, mergeGameOver, timerObservable, timerTickObservable } from "../controller/observable";
+import { Subscription, BehaviorSubject } from "rxjs";
+import { 
+    allCountriesObservable, 
+    buttonClickObservable, 
+    countryInput, 
+    mergeGameOver, 
+    switchMapForGameOver, 
+    timerObservable, 
+    timerTickObservable, 
+    TIMER_IN_SECONDS 
+} from "../controller/observable";
 import { Country } from "../model/country";
 import { Game } from "../model/game";
 import { getTop10Scores } from "../service/user";
@@ -25,6 +34,7 @@ export function fillCountry(svgImage: SVGElement, country: Country, usernameInpu
 export function drawHomePage(body: HTMLDivElement)
 {
     const inputContainer: HTMLDivElement = document.createElement("div");
+    inputContainer.classList.add("input-container");
     inputContainer.id = "start";
 
     const usernameInput: HTMLInputElement = drawUsernameInput();
@@ -35,7 +45,7 @@ export function drawHomePage(body: HTMLDivElement)
 
     appendToDiv(inputContainer, [usernameInput, button]);
 
-    appendToDiv(body, [inputContainer]);
+    prependToDiv(body, [inputContainer]);
 }
 
 export function drawStartButton()
@@ -47,7 +57,7 @@ export function drawStartButton()
 
 export function drawUsernameInput()
 {
-    const usernameInput: HTMLInputElement = getInput();
+    const usernameInput: HTMLInputElement = getInput("username");
 
     return usernameInput;
 }
@@ -74,15 +84,14 @@ export function prependToDiv(div: HTMLDivElement, elements: HTMLElement[])
 export function drawTimer()
 {
     const timer: HTMLParagraphElement = document.createElement("p");
-    timer.style.fontSize = "30px";
-    timer.style.fontWeight = "bold";
+    timer.classList.add("timer");
 
     return timer;
 }
 
 export function setTimer(seconds: number, timer: HTMLParagraphElement)
 {
-    timer.innerText = `${pad(Math.floor(seconds/60))}:${pad(seconds%60)}`;
+    timer.innerText = formatTime(seconds);
 
     if(!seconds) document.dispatchEvent(new Event("timerTick"));
 }
@@ -93,14 +102,26 @@ export function runStart(body: HTMLDivElement, username: string)
     
     body.removeChild(document.querySelector("#start"));
 
+    if(document.querySelector(".score-info")) {
+        body.removeChild(document.querySelector(".score-info"));
+    }
+
     const divContainer: HTMLDivElement = document.createElement("div");
+    divContainer.classList.add("game");
     divContainer.id = "game";
 
-    const game: Game = new Game({username, highScore: 0});
+    let timeRemaining = TIMER_IN_SECONDS;
 
-    const input: HTMLInputElement = getInput();
+    const game: Game = new Game({username, highScore: 0, timeRemaining });
+
+    const inputContainer: HTMLDivElement = document.createElement("div");
+    inputContainer.classList.add("input-container");
+
+    const input: HTMLInputElement = getInput("country");
 
     const button: HTMLButtonElement = getButton("GIVE UP");
+
+    appendToDiv(inputContainer, [input, button]);
 
     const timer: HTMLParagraphElement = drawTimer();
 
@@ -109,7 +130,10 @@ export function runStart(body: HTMLDivElement, username: string)
     const allCountries$ = allCountriesObservable();
     
     const timer$ = timerObservable();
-    const timerSubscription = timer$.subscribe(seconds => setTimer(seconds, timer));
+    const timerSubscription = timer$.subscribe(seconds => {
+        timeRemaining = seconds;
+        setTimer(seconds, timer)
+    });
     const input$ = countryInput(input, game);
 
     input$.subscribe((country: Country) => {
@@ -129,36 +153,40 @@ export function runStart(body: HTMLDivElement, username: string)
         [
             buttonClick$, 
             timerTick$, 
-            allCountries$,         
-        ], 
-        {
-            username: game.player.username, 
-            score: game.affectedCountries.length
-        }
+            allCountries$,
+        ]         
     )
-    .subscribe(() => showScore(body, game.affectedCountries.length, timerSubscription))
+    .pipe(
+        switchMapForGameOver({
+            username: game.player.username,
+            score: game.affectedCountries.length,
+            timeRemaining
+        })
+    ).subscribe(() => showScore(body, game.affectedCountries.length, timeRemaining, timerSubscription))
 
-    appendToDiv(divContainer, [timer, input, button]);
-    appendToDiv(body, [divContainer]);
+    appendToDiv(divContainer, [timer, inputContainer]);
+    prependToDiv(body, [divContainer]);
 }
 
-async function showScore(body:HTMLDivElement, score: number, timerSubscription: Subscription)
+async function showScore(body:HTMLDivElement, score: number, timeRemaining: number, timerSubscription: Subscription)
 {
     body.removeChild(document.querySelector("#game"));
     drawHomePage(body);
     const scoreText = document.createElement("h3");
-    scoreText.innerText = `Your score: ${score}`;
+    scoreText.classList.add("score-info");
+    scoreText.innerText = `Your score: ${score} countries
+                           Time remaining: ${formatTime(timeRemaining)}`;
     timerSubscription.unsubscribe();
 
-    prependToDiv(document.querySelector("#start"), [scoreText]);
-    appendToDiv(document.querySelector("#start"), [await drawScores()]);
+    prependToDiv(document.querySelector("#app"), [scoreText]);
+    await drawScores();
 }
 
-export function getInput()
+export function getInput(placeholderText?: string)
 {
     const input: HTMLInputElement = document.createElement("input");
+    if(placeholderText) input.placeholder = placeholderText;
     input.type = "text";
-
     return input;
 }
 
@@ -172,12 +200,21 @@ export function getButton(text: string)
 
 export async function drawScores()
 {
-    const scoreDiv: HTMLDivElement = document.createElement("div");
-    scoreDiv.innerHTML += "<h2>Top 10 scores:</h2>";
+    let scoreDiv: HTMLDivElement;
+    if(document.querySelector(".high-scores"))
+    {
+        scoreDiv = document.querySelector(".high-scores");
+        scoreDiv.innerHTML = "";
+    } 
+    else {
+        scoreDiv = document.createElement("div");
+        scoreDiv.classList.add("high-scores");
+        appendToDiv(document.querySelector(".map"), [scoreDiv]);
+    }
 
+    scoreDiv.innerHTML += "<h2>Top 10 scores</h2>";
+    
     await drawTop10Scores(scoreDiv);
-
-    return scoreDiv;
 }
 
 export async function drawTop10Scores(scoreDiv: HTMLDivElement)
@@ -185,7 +222,7 @@ export async function drawTop10Scores(scoreDiv: HTMLDivElement)
     const scores = await getTop10Scores();
 
     scores.forEach((element, index) => {
-        scoreDiv.innerHTML += `<h3>${index+1}. ${element.username} ${element.highScore}</h3>`
+        scoreDiv.innerHTML += `<h3>${index+1}. ${element.username}: ${element.highScore} countries for ${formatTime(element.timeRemaining)}</h3>`
     })
 }
 
@@ -198,7 +235,12 @@ export function resetColor(svgImage: SVGElement)
     })
 }
 
-export function pad(n: number)
+function pad(n: number)
 {
     return n < 10 ? `0${n}` : n;
+}
+
+function formatTime(seconds: number)
+{
+    return `${pad(Math.floor(seconds/60))}:${pad(seconds%60)}`
 }

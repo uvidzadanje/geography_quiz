@@ -1,5 +1,6 @@
 export interface Player
 {
     username: string,
-    highScore: number
+    highScore: number,
+    timeRemaining: number
 }

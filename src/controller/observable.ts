@@ -7,6 +7,9 @@ import { updatePlayer } from '../service/user';
 type milisecond = number;
 type second = number;
 
+export const TIMER_IN_SECONDS: second = 300;
+export const ONE_SECOND: milisecond = 1000;
+
 export function countryInput(
     countryInput: HTMLInputElement,
     game: Game
@@ -29,8 +32,6 @@ export function selectCountry(countryName: string): Observable<Country[]>
 
 export function timerObservable(): Observable<number>
 {
-    const TIMER_IN_SECONDS: second = 300;
-    const ONE_SECOND: milisecond = 1000;
 
     return timer(0, ONE_SECOND).pipe(
         map((secondsPassed: second)  => TIMER_IN_SECONDS - secondsPassed),
@@ -53,14 +54,17 @@ export function allCountriesObservable()
     return fromEvent(document, "allCountries");
 }
 
-export function mergeGameOver(observables: Observable<any>[], dataForUpdate: {username: string, score: number})
+export function mergeGameOver(observables: Observable<any>[])
 {
-    return merge(...observables).pipe(
-        switchMap(() => editPlayer(dataForUpdate))
-    )
+    return merge(...observables);
 }
 
-export function editPlayer(dataForUpdate: {username: string, score: number})
+export function switchMapForGameOver(dataForUpdate: {username: string, score: number, timeRemaining: number})
+{
+    return switchMap(() => editPlayer(dataForUpdate));
+}
+
+export function editPlayer(dataForUpdate: {username: string, score: number, timeRemaining: number})
 {
     return from(updatePlayer(dataForUpdate))
 }

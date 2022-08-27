@@ -16,10 +16,10 @@ export async function getPlayer(username: string)
     }
 }
 
-export async function updatePlayer(updateData: {username: string, score: number})
+export async function updatePlayer(updateData: {username: string, score: number, timeRemaining: number})
 {
     try {
-        let {username, score} = updateData;
+        let {username, score, timeRemaining} = updateData;
         let player = await getPlayer(username) || await createPlayer(username);
 
         if(player.highScore > score) return false;
@@ -29,7 +29,7 @@ export async function updatePlayer(updateData: {username: string, score: number}
             headers: {
                 'Content-type': "application/json"
             },
-            body: JSON.stringify({username, highScore: score})
+            body: JSON.stringify({username, highScore: score, timeRemaining})
         });
 
         return true;
@@ -60,7 +60,7 @@ export async function createPlayer(username: string)
 export async function getTop10Scores()
 {
     try {
-        const response = await fetch(`${baseUrl}?_sort=highScore&_order=desc&_limit=10`);
+        const response = await fetch(`${baseUrl}?_sort=highScore,timeRemaining&_order=desc,desc&_limit=10`);
 
         const scores: Player[] = await response.json();
 

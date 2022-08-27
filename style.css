@@ -1,0 +1,67 @@
+.input-container {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+}
+.map {
+    display: flex;
+    justify-content: center;
+    margin-top: 10px;
+    border: 10px solid rgb(204, 150, 34);
+    border-radius: 10px;
+    background-color: white;
+}
+
+.input-container input[type="text"], .game input[type="text"]
+{
+    padding: 10px;
+    border: 1px solid rgb(204, 150, 34);
+    border-bottom: 1px solid green;
+    outline: none;
+    border-radius: 5px;
+}
+
+.input-container button {
+    border: none;
+    background-color: green;
+    border-radius: 5px;
+    color: white;
+    font-weight: bold;
+}
+.game {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+#app {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    gap: 30px;
+}
+
+body{
+    background-image: url("./img/background_pattern.jpg");
+}
+
+.timer {
+    font-size: 30px;
+    font-weight: bold;
+    color: yellow;
+}
+
+.high-scores {
+    padding: 20px;
+    border-left: 10px solid rgb(204, 150, 34);
+}
+
+.high-scores h2 {
+    text-align: center;
+}
+
+.score-info {
+    color: yellow;
+}

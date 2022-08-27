@@ -280,13 +280,33 @@
   "players": [
     {
       "username": "david",
-      "highScore": 41,
+      "highScore": 12,
+      "timeRemaining": 256,
       "id": 1
+    },
+    {
+      "username": "neko drugi",
+      "highScore": 22,
+      "timeRemaining": 232,
+      "id": 2
+    },
+    {
+      "username": "ja",
+      "highScore": 11,
+      "timeRemaining": 262,
+      "id": 3
+    },
+    {
+      "username": "nikola",
+      "highScore": 11,
+      "timeRemaining": 267,
+      "id": 4
     },
     {
       "username": "nesto",
       "highScore": 0,
-      "id": 2
+      "timeRemaining": 5,
+      "id": 5
     }
   ]
 }
