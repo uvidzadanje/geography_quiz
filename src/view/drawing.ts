@@ -1,9 +1,12 @@
-import { Subscription, BehaviorSubject } from "rxjs";
+import { Subscription, BehaviorSubject, merge, switchMap } from "rxjs";
 import { 
     allCountriesObservable, 
     buttonClickObservable, 
     countryInput, 
+    editPlayer, 
     mergeGameOver, 
+    setSubscriber, 
+    setSubscriberForEvent, 
     switchMapForGameOver, 
     timerObservable, 
     timerTickObservable, 
@@ -18,15 +21,14 @@ const NUM_OF_COUNTRIES = 41;
 export function fillCountry(svgImage: SVGElement, country: Country, usernameInput: HTMLInputElement)
 {
     if(!country) return;
+
     const fill = Array
                 .from(svgImage.children)
                 .filter(element => element.getAttribute("name") === country.name);
 
     if(!fill.length) return;
 
-    fill.forEach(element => {
-        element.setAttribute("fill", "lightgreen");
-    })
+    fillCountryPathsWithColor(fill, "lightgreen");
 
     usernameInput.value = "";
 }
@@ -40,8 +42,7 @@ export function drawHomePage(body: HTMLDivElement)
     const usernameInput: HTMLInputElement = drawUsernameInput();
     const button: HTMLButtonElement = drawStartButton();
 
-    buttonClickObservable(button)
-    .subscribe(() => runStart(body, usernameInput.value));
+    setSubscriberForEvent(buttonClickObservable(button), () => runStart(body, usernameInput.value));
 
     appendToDiv(inputContainer, [usernameInput, button]);
 
@@ -130,39 +131,34 @@ export function runStart(body: HTMLDivElement, username: string)
     const allCountries$ = allCountriesObservable();
     
     const timer$ = timerObservable();
-    const timerSubscription = timer$.subscribe(seconds => {
-        timeRemaining = seconds;
+
+    const timerSubscription = setSubscriber(timer$, seconds => {
+        timeRemaining = TIMER_IN_SECONDS - seconds;
         setTimer(seconds, timer)
     });
+
     const input$ = countryInput(input, game);
 
-    input$.subscribe((country: Country) => {
+    setSubscriber(input$,  (country: Country) => {
         fillCountry(getSVGMap() ,country, input);
         game.addAffectedCountry(country);
         numberOfAffectedCountries.next(game.affectedCountries.length);
-    });
+    })
 
     let numberOfAffectedCountries: BehaviorSubject<number> = new BehaviorSubject(game.affectedCountries.length);
-    numberOfAffectedCountries.pipe().subscribe((numberOfAffectedCountries) => {
+
+    setSubscriber(numberOfAffectedCountries.pipe(), (numberOfAffectedCountries) => {
         if(numberOfAffectedCountries !== NUM_OF_COUNTRIES) return;
 
         document.dispatchEvent(new Event("allCountries"));
     })
 
-    mergeGameOver(
-        [
-            buttonClick$, 
-            timerTick$, 
-            allCountries$,
-        ]         
-    )
-    .pipe(
-        switchMapForGameOver({
-            username: game.player.username,
-            score: game.affectedCountries.length,
-            timeRemaining
-        })
-    ).subscribe(() => showScore(body, game.affectedCountries.length, timeRemaining, timerSubscription))
+    setSubscriber(mergeGameOver([
+        buttonClick$,
+        timerTick$,
+        allCountries$])
+    .pipe(switchMap(() => editPlayer({username: game.player.username, score: game.affectedCountries.length, timeRemaining})))
+    ,() => showScore(body, game.affectedCountries.length, timeRemaining, timerSubscription))
 
     appendToDiv(divContainer, [timer, inputContainer]);
     prependToDiv(body, [divContainer]);
@@ -175,7 +171,7 @@ async function showScore(body:HTMLDivElement, score: number, timeRemaining: numb
     const scoreText = document.createElement("h3");
     scoreText.classList.add("score-info");
     scoreText.innerText = `Your score: ${score} countries
-                           Time remaining: ${formatTime(timeRemaining)}`;
+                           For: ${formatTime(timeRemaining)}`;
     timerSubscription.unsubscribe();
 
     prependToDiv(document.querySelector("#app"), [scoreText]);
@@ -228,11 +224,9 @@ export async function drawTop10Scores(scoreDiv: HTMLDivElement)
 
 export function resetColor(svgImage: SVGElement)
 {
-    const fill = Array.from(svgImage.children)
+    const fill = Array.from(svgImage.children);
 
-    fill.forEach(element => {
-        element.setAttribute("fill", "#ececec");
-    })
+    fillCountryPathsWithColor(fill, "#ececec");
 }
 
 function pad(n: number)
@@ -243,4 +237,11 @@ function pad(n: number)
 function formatTime(seconds: number)
 {
     return `${pad(Math.floor(seconds/60))}:${pad(seconds%60)}`
+}
+
+function fillCountryPathsWithColor(paths: Element[], color: string)
+{
+    paths.forEach(element => {
+        element.setAttribute("fill", color);
+    })
 }

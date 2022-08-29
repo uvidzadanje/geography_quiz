@@ -68,3 +68,13 @@ export function editPlayer(dataForUpdate: {username: string, score: number, time
 {
     return from(updatePlayer(dataForUpdate))
 }
+
+export function setSubscriberForEvent(event$: Observable<Event>, subscribeFunction: (value? : Event) => void)
+{
+    return setSubscriber(event$, subscribeFunction);
+}
+
+export function setSubscriber(observer: Observable<any>, subscribeFunction: (value?: any) => void)
+{
+    return observer.subscribe(subscribeFunction);
+}

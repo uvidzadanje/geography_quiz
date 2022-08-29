@@ -60,7 +60,7 @@ export async function createPlayer(username: string)
 export async function getTop10Scores()
 {
     try {
-        const response = await fetch(`${baseUrl}?_sort=highScore,timeRemaining&_order=desc,desc&_limit=10`);
+        const response = await fetch(`${baseUrl}?_sort=highScore,timeRemaining&_order=desc,asc&_limit=10`);
 
         const scores: Player[] = await response.json();
 
