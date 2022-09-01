@@ -1,48 +1,57 @@
-import { Subscription, BehaviorSubject, merge, switchMap } from "rxjs";
 import { 
-    allCountriesObservable, 
-    buttonClickObservable, 
-    countryInput, 
-    editPlayer, 
-    mergeGameOver, 
-    setSubscriber, 
-    setSubscriberForEvent, 
-    switchMapForGameOver, 
-    timerObservable, 
-    timerTickObservable, 
-    TIMER_IN_SECONDS 
+    buttonClickObservable,
+    gameStartObservable,
+    setSubscriberForEvent,
 } from "../controller/observable";
 import { Country } from "../model/country";
-import { Game } from "../model/game";
 import { getTop10Scores } from "../service/user";
 
-const NUM_OF_COUNTRIES = 41;
+const COUNTRY_ATTRIBUTE_NAME = "name";
 
-export function fillCountry(svgImage: SVGElement, country: Country, usernameInput: HTMLInputElement)
+const COUNTRY_HIT_FILL_COLOR = "lightgreen";
+const COUNTRY_DEFAULT_FILL_COLOR = "#ececec";
+
+const INPUT_CONTAINER_CLASSNAME = "input-container";
+const SCORE_INFO_CLASSNAME = "score-info";
+const TIMER_CLASSNAME = "timer";
+const GAME_CLASSNAME = "game";
+const HIGH_SCORES_CLASSNAME = "high-scores";
+const MAP_CLASSNAME = "map";
+
+const SVG_TAG_NAME = "svg";
+const APP_ID_NAME = "app";
+
+export function fillCountry({country, svgImage, countryInput}: {country: Country, svgImage: SVGElement, countryInput: HTMLInputElement})
 {
     if(!country) return;
 
     const fill = Array
                 .from(svgImage.children)
-                .filter(element => element.getAttribute("name") === country.name);
+                .filter(element => element.getAttribute(COUNTRY_ATTRIBUTE_NAME) === country.name);
 
     if(!fill.length) return;
 
-    fillCountryPathsWithColor(fill, "lightgreen");
 
-    usernameInput.value = "";
+    fillCountryPathsWithColor(fill, COUNTRY_HIT_FILL_COLOR);
+
+    countryInput.value = "";
 }
 
 export function drawHomePage(body: HTMLDivElement)
 {
-    const inputContainer: HTMLDivElement = document.createElement("div");
-    inputContainer.classList.add("input-container");
-    inputContainer.id = "start";
+    const inputContainer: HTMLDivElement = createInputContainer();
 
     const usernameInput: HTMLInputElement = drawUsernameInput();
     const button: HTMLButtonElement = drawStartButton();
 
-    setSubscriberForEvent(buttonClickObservable(button), () => runStart(body, usernameInput.value));
+    setSubscriberForEvent(buttonClickObservable(button), () => {
+        if(!usernameInput.value)
+        {
+            alert("Username is required!");
+            return;
+        }
+        drawStart(body, usernameInput.value)
+    });
 
     appendToDiv(inputContainer, [usernameInput, button]);
 
@@ -51,21 +60,27 @@ export function drawHomePage(body: HTMLDivElement)
 
 export function drawStartButton()
 {
-    const button:HTMLButtonElement = getButton("START");
+    const BUTTON_TEXT = "START";
+    const button:HTMLButtonElement = createButton({
+        text: BUTTON_TEXT
+    });
 
     return button;
 }
 
 export function drawUsernameInput()
 {
-    const usernameInput: HTMLInputElement = getInput("username");
+    const PLACEHOLDER_TEXT = "username";
+    const usernameInput: HTMLInputElement = createInput({
+        placeholderText: PLACEHOLDER_TEXT
+    });
 
     return usernameInput;
 }
 
 export function getSVGMap()
 {
-    return document.querySelector("svg");
+    return document.querySelector(SVG_TAG_NAME);
 }
 
 export function appendToDiv(div: HTMLDivElement, elements: HTMLElement[])
@@ -85,7 +100,7 @@ export function prependToDiv(div: HTMLDivElement, elements: HTMLElement[])
 export function drawTimer()
 {
     const timer: HTMLParagraphElement = document.createElement("p");
-    timer.classList.add("timer");
+    timer.classList.add(TIMER_CLASSNAME);
 
     return timer;
 }
@@ -93,92 +108,60 @@ export function drawTimer()
 export function setTimer(seconds: number, timer: HTMLParagraphElement)
 {
     timer.innerText = formatTime(seconds);
-
-    if(!seconds) document.dispatchEvent(new Event("timerTick"));
 }
 
-export function runStart(body: HTMLDivElement, username: string)
+export function resetStart(body: HTMLDivElement)
 {
     resetColor(getSVGMap());
     
-    body.removeChild(document.querySelector("#start"));
+    body.removeChild(document.querySelector(getClassFormatForQuery(INPUT_CONTAINER_CLASSNAME)));
 
-    if(document.querySelector(".score-info")) {
-        body.removeChild(document.querySelector(".score-info"));
+    const scoreInfoElement = document.querySelector(getClassFormatForQuery(SCORE_INFO_CLASSNAME))
+
+    if(scoreInfoElement) {
+        body.removeChild(scoreInfoElement);
     }
+}
+
+export function drawStart(body: HTMLDivElement, username: string)
+{
+    resetStart(body);
 
     const divContainer: HTMLDivElement = document.createElement("div");
-    divContainer.classList.add("game");
-    divContainer.id = "game";
+    divContainer.classList.add(GAME_CLASSNAME);
 
-    let timeRemaining = TIMER_IN_SECONDS;
+    const inputContainer: HTMLDivElement = createInputContainer();
 
-    const game: Game = new Game({username, highScore: 0, timeRemaining });
+    const PLACEHOLDER_TEXT = "country";
+    const input: HTMLInputElement = createInput({placeholderText: PLACEHOLDER_TEXT});
 
-    const inputContainer: HTMLDivElement = document.createElement("div");
-    inputContainer.classList.add("input-container");
-
-    const input: HTMLInputElement = getInput("country");
-
-    const button: HTMLButtonElement = getButton("GIVE UP");
+    const BUTTON_TEXT = "GIVE UP";
+    const button: HTMLButtonElement = createButton({text: BUTTON_TEXT});
 
     appendToDiv(inputContainer, [input, button]);
 
     const timer: HTMLParagraphElement = drawTimer();
 
-    const buttonClick$ = buttonClickObservable(button);
-    const timerTick$ = timerTickObservable();
-    const allCountries$ = allCountriesObservable();
-    
-    const timer$ = timerObservable();
-
-    const timerSubscription = setSubscriber(timer$, seconds => {
-        timeRemaining = TIMER_IN_SECONDS - seconds;
-        setTimer(seconds, timer)
-    });
-
-    const input$ = countryInput(input, game);
-
-    setSubscriber(input$,  (country: Country) => {
-        fillCountry(getSVGMap() ,country, input);
-        game.addAffectedCountry(country);
-        numberOfAffectedCountries.next(game.affectedCountries.length);
-    })
-
-    let numberOfAffectedCountries: BehaviorSubject<number> = new BehaviorSubject(game.affectedCountries.length);
-
-    setSubscriber(numberOfAffectedCountries.pipe(), (numberOfAffectedCountries) => {
-        if(numberOfAffectedCountries !== NUM_OF_COUNTRIES) return;
-
-        document.dispatchEvent(new Event("allCountries"));
-    })
-
-    setSubscriber(mergeGameOver([
-        buttonClick$,
-        timerTick$,
-        allCountries$])
-    .pipe(switchMap(() => editPlayer({username: game.player.username, score: game.affectedCountries.length, timeRemaining})))
-    ,() => showScore(body, game.affectedCountries.length, timeRemaining, timerSubscription))
-
     appendToDiv(divContainer, [timer, inputContainer]);
     prependToDiv(body, [divContainer]);
+
+    gameStartObservable({username, body, giveUpButton: button, countryInput: input, timerElement: timer});
 }
 
-async function showScore(body:HTMLDivElement, score: number, timeRemaining: number, timerSubscription: Subscription)
+export async function showScore(body:HTMLDivElement, score: number, timeRemaining: number)
 {
-    body.removeChild(document.querySelector("#game"));
+    body.removeChild(document.querySelector(getClassFormatForQuery(GAME_CLASSNAME)));
     drawHomePage(body);
     const scoreText = document.createElement("h3");
-    scoreText.classList.add("score-info");
+    scoreText.classList.add(SCORE_INFO_CLASSNAME);
     scoreText.innerText = `Your score: ${score} countries
                            For: ${formatTime(timeRemaining)}`;
-    timerSubscription.unsubscribe();
 
-    prependToDiv(document.querySelector("#app"), [scoreText]);
+    prependToDiv(document.querySelector(getIdFormatForQuery(APP_ID_NAME)), [scoreText]);
     await drawScores();
 }
 
-export function getInput(placeholderText?: string)
+export function createInput({placeholderText}: {placeholderText?: string})
 {
     const input: HTMLInputElement = document.createElement("input");
     if(placeholderText) input.placeholder = placeholderText;
@@ -186,7 +169,7 @@ export function getInput(placeholderText?: string)
     return input;
 }
 
-export function getButton(text: string)
+export function createButton({ text }: {text: string})
 {
     const button:HTMLButtonElement = document.createElement("button");
     button.innerText = text;
@@ -194,18 +177,26 @@ export function getButton(text: string)
     return button
 }
 
+export function createInputContainer()
+{
+    const inputContainer: HTMLDivElement = document.createElement("div");
+    inputContainer.classList.add(INPUT_CONTAINER_CLASSNAME);
+
+    return inputContainer;
+}
+
 export async function drawScores()
 {
     let scoreDiv: HTMLDivElement;
-    if(document.querySelector(".high-scores"))
+    if(document.querySelector(getClassFormatForQuery(HIGH_SCORES_CLASSNAME)))
     {
-        scoreDiv = document.querySelector(".high-scores");
+        scoreDiv = document.querySelector(getClassFormatForQuery(HIGH_SCORES_CLASSNAME));
         scoreDiv.innerHTML = "";
     } 
     else {
         scoreDiv = document.createElement("div");
-        scoreDiv.classList.add("high-scores");
-        appendToDiv(document.querySelector(".map"), [scoreDiv]);
+        scoreDiv.classList.add(HIGH_SCORES_CLASSNAME);
+        appendToDiv(document.querySelector(getClassFormatForQuery(MAP_CLASSNAME)), [scoreDiv]);
     }
 
     scoreDiv.innerHTML += "<h2>Top 10 scores</h2>";
@@ -226,22 +217,32 @@ export function resetColor(svgImage: SVGElement)
 {
     const fill = Array.from(svgImage.children);
 
-    fillCountryPathsWithColor(fill, "#ececec");
+    fillCountryPathsWithColor(fill, COUNTRY_DEFAULT_FILL_COLOR);
 }
 
-function pad(n: number)
+export function pad(n: number)
 {
     return n < 10 ? `0${n}` : n;
 }
 
-function formatTime(seconds: number)
+export function formatTime(seconds: number)
 {
     return `${pad(Math.floor(seconds/60))}:${pad(seconds%60)}`
 }
 
-function fillCountryPathsWithColor(paths: Element[], color: string)
+export function fillCountryPathsWithColor(paths: Element[], color: string)
 {
     paths.forEach(element => {
         element.setAttribute("fill", color);
     })
+}
+
+export function getClassFormatForQuery(className: string)
+{
+    return `.${className}`;
+}
+
+export function getIdFormatForQuery(id: string)
+{
+    return `#${id}`;
 }

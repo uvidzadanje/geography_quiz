@@ -2,12 +2,26 @@ import { config } from "../config";
 import { Player } from "../model/player";
 const baseUrl = `${config.API_URL}/players`;
 
+function setHeader({method, payload}: {method: string, payload: Object})
+{
+    return {
+        method: method,
+        headers: {
+            'Content-type': "application/json"
+        },
+        body: JSON.stringify(payload)
+    }
+}
+
 export async function getPlayer(username: string)
 {
     try {
-        const response = await fetch(`${baseUrl}?username=${username}`);
+        const API_URL = `${baseUrl}?username=${username}`;
+
+        const response = await fetch(API_URL);
 
         const players = await response.json();
+
         if(!players.length) return null;
 
         return players[0];
@@ -16,25 +30,24 @@ export async function getPlayer(username: string)
     }
 }
 
-export async function updatePlayer(updateData: {username: string, score: number, timeRemaining: number})
+export async function updatePlayer({username, score, timeRemaining}: {username: string, score: number, timeRemaining: number})
 {
     try {
-        let {username, score, timeRemaining} = updateData;
         let player = await getPlayer(username) || await createPlayer(username);
 
-        if(player.highScore > score) return false;
+        if(player.highScore > score || (player.highScore === score && player.timeRemaining < timeRemaining)) return false;
 
-        await fetch(`${baseUrl}/${player.id}`, {
-            method: "PUT",
-            headers: {
-                'Content-type': "application/json"
-            },
-            body: JSON.stringify({username, highScore: score, timeRemaining})
-        });
+        await fetch(`${baseUrl}/${player.id}`, setHeader({
+            method: "PUT", 
+            payload: {
+                username,
+                highScore: score,
+                timeRemaining
+            }
+        }));
 
         return true;
     } catch (error) {
-        console.log(error);
         return false;
     }
 }
@@ -42,17 +55,16 @@ export async function updatePlayer(updateData: {username: string, score: number,
 export async function createPlayer(username: string)
 {
     try {
-        const player = await fetch(`${baseUrl}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({username, highScore: 0})
-        });
+        const player = await fetch(`${baseUrl}`, setHeader({
+            method: "POST", 
+            payload: {
+                username, 
+                highScore: 0
+            }
+        }));
 
         return await player.json();
     } catch (error) {
-        console.log(error);
         return null;
     }
 }
@@ -60,7 +72,9 @@ export async function createPlayer(username: string)
 export async function getTop10Scores()
 {
     try {
-        const response = await fetch(`${baseUrl}?_sort=highScore,timeRemaining&_order=desc,asc&_limit=10`);
+        const API_URL = `${baseUrl}?_sort=highScore,timeRemaining&_order=desc,asc&_limit=10`;
+
+        const response = await fetch(API_URL);
 
         const scores: Player[] = await response.json();
 
